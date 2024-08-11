@@ -1,5 +1,5 @@
 Tool code: JAKD
-Tool type: JackHammer
+Tool type: Jackhammer
 Tool brand: DeWalt
 Rental days: 6
 Check out date: 09/03/15
