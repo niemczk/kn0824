@@ -1,0 +1,12 @@
+Tool code: JAKD
+Tool type: JackHammer
+Tool brand: DeWalt
+Rental days: 6
+Check out date: 09/03/15
+Due date: 09/09/15
+Daily rental charge: $2.99
+Charge days: 4
+Pre-discount charge: $11.96
+Discount percent: 0%
+Discount amount: $0.00
+Final charge: $11.96

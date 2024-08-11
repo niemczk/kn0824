@@ -128,7 +128,7 @@ public class RentalAgreement {
                 String.format("Due date: %s\n", dueDate.format(DATE_FORMAT)) +
                 String.format("Daily rental charge: %s\n", CURRENCY_FORMAT.format(dailyRentalCharge.setScale(2, RoundingMode.CEILING))) +
                 String.format("Charge days: %d\n", chargeDays) +
-                String.format("Pre-discount charge: %s", CURRENCY_FORMAT.format(preDiscountCharge.setScale(2, RoundingMode.CEILING))) +
+                String.format("Pre-discount charge: %s\n", CURRENCY_FORMAT.format(preDiscountCharge.setScale(2, RoundingMode.CEILING))) +
                 String.format("Discount percent: %d%%\n", discountPercent) +
                 String.format("Discount amount: %s\n", CURRENCY_FORMAT.format(discountAmount.setScale(2, RoundingMode.CEILING))) +
                 String.format("Final charge: %s", CURRENCY_FORMAT.format(finalAmount.setScale(2, RoundingMode.CEILING)));

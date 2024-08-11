@@ -1,0 +1,12 @@
+Tool code: JAKR
+Tool type: JackHammer
+Tool brand: Ridgid
+Rental days: 9
+Check out date: 07/02/15
+Due date: 07/11/15
+Daily rental charge: $2.99
+Charge days: 7
+Pre-discount charge: $20.93
+Discount percent: 0%
+Discount amount: $0.00
+Final charge: $20.93
