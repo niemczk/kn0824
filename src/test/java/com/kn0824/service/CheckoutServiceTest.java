@@ -27,7 +27,7 @@ public class CheckoutServiceTest {
     @Test
     public void test1() {
         try {
-            RentalAgreement agreement = checkoutService.checkout("JAKR", LocalDate.of(2015, 9, 3), 5, 101);
+            checkoutService.checkout("JAKR", LocalDate.of(2015, 9, 3), 5, 101);
             // This should throw an illegal argument exception
             Assertions.fail();
         } catch (IllegalArgumentException e) {
@@ -46,6 +46,20 @@ public class CheckoutServiceTest {
     public void test3() throws IOException {
         RentalAgreement agreement = checkoutService.checkout("CHNS", LocalDate.of(2015, 7, 2), 5, 25);
         String expectedResults = readExpectedResultsFromFile("com/kn0824/service/test3Output.txt");
+        Assertions.assertEquals(expectedResults, agreement.prettyPrint());
+    }
+
+    @Test
+    public void test3_withJuly4thOnMonday() throws IOException {
+        RentalAgreement agreement = checkoutService.checkout("CHNS", LocalDate.of(2016, 7, 2), 5, 25);
+        String expectedResults = readExpectedResultsFromFile("com/kn0824/service/test3Output_withJuly4thOnMonday.txt");
+        Assertions.assertEquals(expectedResults, agreement.prettyPrint());
+    }
+
+    @Test
+    public void test3_withJuly4thOnSunday() throws IOException {
+        RentalAgreement agreement = checkoutService.checkout("CHNS", LocalDate.of(2021, 7, 2), 5, 25);
+        String expectedResults = readExpectedResultsFromFile("com/kn0824/service/test3Output_withJuly4thOnSunday.txt");
         Assertions.assertEquals(expectedResults, agreement.prettyPrint());
     }
 
@@ -72,9 +86,17 @@ public class CheckoutServiceTest {
     }
 
     @Test
+    public void holidayEdgeCase() throws IOException{
+        RentalAgreement agreement = checkoutService.checkout("CHNS", LocalDate.of(2021, 7, 3), 1, 0);
+        String expectedResults = readExpectedResultsFromFile("com/kn0824/service/testOutput_holidayEdgeCase.txt");
+        Assertions.assertEquals(expectedResults, agreement.prettyPrint());
+    }
+
+
+    @Test
     public void testForBadToolCode() {
         try {
-            RentalAgreement agreement = checkoutService.checkout("FOOBAR", LocalDate.of(2015, 9, 3), 5, 0);
+            checkoutService.checkout("FOOBAR", LocalDate.of(2015, 9, 3), 5, 0);
             // This should throw an illegal argument exception
             Assertions.fail();
         } catch (IllegalArgumentException e) {
@@ -85,7 +107,7 @@ public class CheckoutServiceTest {
     @Test
     public void testForBadRentalDaysValue() {
         try {
-            RentalAgreement agreement = checkoutService.checkout("JAKR", LocalDate.of(2015, 9, 3), 0, 0);
+            checkoutService.checkout("JAKR", LocalDate.of(2015, 9, 3), 0, 0);
             // This should throw an illegal argument exception
             Assertions.fail();
         } catch (IllegalArgumentException e) {
@@ -96,7 +118,7 @@ public class CheckoutServiceTest {
     @Test
     public void testForMultipleBadArgs() {
         try {
-            RentalAgreement agreement = checkoutService.checkout("FOOBAR", LocalDate.of(2015, 9, 3), 0, 200);
+            checkoutService.checkout("FOOBAR", LocalDate.of(2015, 9, 3), 0, 200);
             // This should throw an illegal argument exception
             Assertions.fail();
         } catch (IllegalArgumentException e) {
@@ -105,6 +127,7 @@ public class CheckoutServiceTest {
                     "Please confirm the code and try again. ", e.getMessage());
         }
     }
+
 
     private String readExpectedResultsFromFile(String fileName) throws IOException {
         // Use class loader to get resource as stream

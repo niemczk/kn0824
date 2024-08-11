@@ -71,7 +71,11 @@ public class CheckoutService {
         boolean chargeOnWeekdays = toolBeingRequested.getToolType().isWeekdayCharge();
         for (LocalDate date = startingDate; !date.isAfter(endDate); date = date.plusDays(1)) {
             if (chargeOnWeekdays && !isWeekend(date)) {
-                chargeableDays++;
+                if (isHoliday(date) && !chargeOnHolidays) {
+                    continue;
+                } else {
+                    chargeableDays++;
+                }
             }
 
             if (isWeekend(date) && chargeOnWeekends) {
@@ -80,7 +84,8 @@ public class CheckoutService {
 
             if (isHoliday(date)) {
                 if (isHolidayObservedOnWeekday(date) && !chargeOnHolidays) {
-                    //deduct from chargable days
+                    // In the case where we are a holiday that is on a weekend but we observe it on a weekday,
+                    // Just deduct the number of chargeable days if we don't charge on the holiday.
                     chargeableDays--;
                 }
             }
@@ -98,18 +103,6 @@ public class CheckoutService {
         return (date.getMonth() == Month.JULY && date.getDayOfMonth() == 4
                 && (date.getDayOfWeek() == DayOfWeek.SATURDAY || date.getDayOfWeek() == DayOfWeek.SUNDAY))
                 || (isLaborDay(date) && (date.getDayOfWeek() == DayOfWeek.SATURDAY || date.getDayOfWeek() == DayOfWeek.SUNDAY));
-    }
-
-    private boolean isHolidayObservedOnWeekend(LocalDate date) {
-        if (date.getMonth() == Month.JULY && date.getDayOfMonth() == 4) {
-            // July 4th observed on a weekend will not affect charging unless the holiday is chargeable
-            return date.getDayOfWeek() == DayOfWeek.SATURDAY || date.getDayOfWeek() == DayOfWeek.SUNDAY;
-        }
-        if (isLaborDay(date)) {
-            // Labor Day observed on a weekend will not affect charging unless the holiday is chargeable
-            return date.getDayOfWeek() == DayOfWeek.SATURDAY || date.getDayOfWeek() == DayOfWeek.SUNDAY;
-        }
-        return false;
     }
 
     private boolean isLaborDay(LocalDate date) {
@@ -144,8 +137,8 @@ public class CheckoutService {
 
             List<String[]> rows = reader.readAll();
             for (String[] row : rows) {
-                types.put(row[0], new ToolType(row[0], new BigDecimal(row[1]), Boolean.valueOf(row[2]),
-                        Boolean.valueOf(row[3]), Boolean.valueOf(row[4])));
+                types.put(row[0], new ToolType(row[0], new BigDecimal(row[1]), Boolean.parseBoolean(row[2]),
+                        Boolean.parseBoolean(row[3]), Boolean.parseBoolean(row[4])));
             }
         } catch (IOException | CsvException e) {
             e.printStackTrace();

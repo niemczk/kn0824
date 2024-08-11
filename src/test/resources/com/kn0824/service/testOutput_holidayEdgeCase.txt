@@ -1,0 +1,12 @@
+Tool code: CHNS
+Tool type: Chainsaw
+Tool brand: Stihl
+Rental days: 1
+Check out date: 07/03/21
+Due date: 07/04/21
+Daily rental charge: $1.49
+Charge days: 0
+Pre-discount charge: $0.00
+Discount percent: 0%
+Discount amount: $0.00
+Final charge: $0.00
