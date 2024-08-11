@@ -3,23 +3,27 @@ package com.kn0824.service;
 import com.kn0824.core.agreement.RentalAgreement;
 import com.kn0824.core.tools.Tool;
 import com.kn0824.core.tools.ToolType;
+import com.opencsv.CSVReader;
+import com.opencsv.exceptions.CsvException;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.Month;
 import java.time.temporal.TemporalAdjusters;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class CheckoutService {
 
     // Note: Normally I would not implement in this manner. The tools and the tool types would be better served being
     // stored in a database so that they could be added, modified, and removed without requiring code updates.
-    // For the sake of the scope of this demonstration, we are just going to generate the data internally.
+    // For the sake of the scope of this demonstration, we are just going to read the file from stored csv files
+    private static final String TOOLTYPE_CSV_FILE = "/tooltype.csv";
+    private static final String TOOLS_CSV_FILE = "/tools.csv";
     private Map<String, Tool> toolMapping;
 
     public CheckoutService() {
@@ -55,82 +59,98 @@ public class CheckoutService {
 
     /*
     Method calculates the number of days we can actually charge the user based on the Tool settings (holidays, weekends, etc.)
-    The starting checkoutDate is NOT inclusive.
+    The starting checkoutDate is NOT inclusive. In other words, with a checkout date of Aug 1, and remaining rental days is 3,
+    we will consider the date range as Aug 2, Aug 3, Aug 4.
      */
-    private int calculateChargeableDays(Tool toolBeingRequested, LocalDate startDate, int remainingRentalDays) {
+    private int calculateChargeableDays(Tool toolBeingRequested, LocalDate checkoutDate, int remainingRentalDays) {
         int chargeableDays = 0;
-        Set<LocalDate> holidays = getHolidays(startDate.getYear());
-
-        for (int i = 0; i < remainingRentalDays; i++) {
-            LocalDate currentDate = startDate.plusDays(i);
-
-            if (isChargeableDay(currentDate, toolBeingRequested.getToolType().isWeekdayCharge(),
-                    toolBeingRequested.getToolType().isWeekendCharge(), toolBeingRequested.getToolType().isHolidayCharge(), holidays)) {
+        LocalDate startingDate = checkoutDate.plusDays(1);
+        LocalDate endDate = checkoutDate.plusDays(remainingRentalDays);
+        boolean chargeOnHolidays = toolBeingRequested.getToolType().isHolidayCharge();
+        boolean chargeOnWeekends = toolBeingRequested.getToolType().isWeekendCharge();
+        boolean chargeOnWeekdays = toolBeingRequested.getToolType().isWeekdayCharge();
+        for (LocalDate date = startingDate; !date.isAfter(endDate); date = date.plusDays(1)) {
+            if (chargeOnWeekdays && !isWeekend(date)) {
                 chargeableDays++;
             }
-        }
 
+            if (isWeekend(date) && chargeOnWeekends) {
+                chargeableDays++;
+            }
+
+            if (isHoliday(date)) {
+                if (isHolidayObservedOnWeekday(date) && !chargeOnHolidays) {
+                    //deduct from chargable days
+                    chargeableDays--;
+                }
+            }
+        }
         return chargeableDays;
     }
 
-    private static boolean isChargeableDay(LocalDate date, boolean chargeOnWeekday, boolean chargeOnWeekend, boolean chargeOnHoliday, Set<LocalDate> holidays) {
-        DayOfWeek dayOfWeek = date.getDayOfWeek();
-        boolean isWeekend = (dayOfWeek == DayOfWeek.SATURDAY || dayOfWeek == DayOfWeek.SUNDAY);
+    private boolean isHoliday(LocalDate date) {
+        return date.equals(LocalDate.of(date.getYear(), Month.JULY, 4))
+                || isLaborDay(date);
+    }
 
-        if (chargeOnHoliday && holidays.contains(date)) {
-            return true;
+    private boolean isHolidayObservedOnWeekday(LocalDate date) {
+        // If the holiday falls on a weekend, it will be observed on the nearest weekday
+        return (date.getMonth() == Month.JULY && date.getDayOfMonth() == 4
+                && (date.getDayOfWeek() == DayOfWeek.SATURDAY || date.getDayOfWeek() == DayOfWeek.SUNDAY))
+                || (isLaborDay(date) && (date.getDayOfWeek() == DayOfWeek.SATURDAY || date.getDayOfWeek() == DayOfWeek.SUNDAY));
+    }
+
+    private boolean isHolidayObservedOnWeekend(LocalDate date) {
+        if (date.getMonth() == Month.JULY && date.getDayOfMonth() == 4) {
+            // July 4th observed on a weekend will not affect charging unless the holiday is chargeable
+            return date.getDayOfWeek() == DayOfWeek.SATURDAY || date.getDayOfWeek() == DayOfWeek.SUNDAY;
         }
-
-        if (isWeekend && chargeOnWeekend) {
-            return true;
+        if (isLaborDay(date)) {
+            // Labor Day observed on a weekend will not affect charging unless the holiday is chargeable
+            return date.getDayOfWeek() == DayOfWeek.SATURDAY || date.getDayOfWeek() == DayOfWeek.SUNDAY;
         }
-
-        if (!isWeekend && chargeOnWeekday) {
-            return true;
-        }
-
         return false;
     }
 
-    private static Set<LocalDate> getHolidays(int year) {
-        Set<LocalDate> holidays = new HashSet<>();
-
-        // July 4th
-        LocalDate july4 = LocalDate.of(year, Month.JULY, 4);
-        holidays.add(adjustHolidayIfWeekend(july4));
-
-        // Labor Day (first Monday in September)
-        LocalDate laborDay = LocalDate.of(year, Month.SEPTEMBER, 1)
-                .with(TemporalAdjusters.firstInMonth(DayOfWeek.MONDAY));
-        holidays.add(adjustHolidayIfWeekend(laborDay));
-
-        return holidays;
+    private boolean isLaborDay(LocalDate date) {
+        return date.getMonth() == Month.SEPTEMBER && date.getDayOfWeek() == DayOfWeek.MONDAY
+                && date.with(TemporalAdjusters.firstInMonth(DayOfWeek.MONDAY)).getDayOfMonth() <= 7;
     }
 
-    private static LocalDate adjustHolidayIfWeekend(LocalDate holiday) {
-        DayOfWeek dayOfWeek = holiday.getDayOfWeek();
-        if (dayOfWeek == DayOfWeek.SATURDAY) {
-            return holiday.minusDays(1);  // Observed on Friday
-        } else if (dayOfWeek == DayOfWeek.SUNDAY) {
-            return holiday.plusDays(1);  // Observed on Monday
-        }
-        return holiday;
+    private boolean isWeekend(LocalDate date) {
+        DayOfWeek dayOfWeek = date.getDayOfWeek();
+        return dayOfWeek == DayOfWeek.SATURDAY || dayOfWeek == DayOfWeek.SUNDAY;
     }
 
     private void initialize() {
         Map<String, ToolType> types = createToolTypes();
         this.toolMapping = new HashMap<>();
-        this.toolMapping.put("CHNS", new Tool("CHNS", types.get("Chainsaw"), "Stihl"));
-        this.toolMapping.put("LADW", new Tool("LADW", types.get("Ladder"), "Werner"));
-        this.toolMapping.put("JAKD", new Tool("JAKD", types.get("Jackhammer"), "DeWalt"));
-        this.toolMapping.put("JAKR", new Tool("JAKR", types.get("Jackhammer"), "Ridgid"));
+        try (InputStream inputStream = CheckoutService.class.getResourceAsStream(TOOLS_CSV_FILE);
+             CSVReader reader = new CSVReader(new InputStreamReader(inputStream))) {
+
+            List<String[]> rows = reader.readAll();
+            for (String[] row : rows) {
+                toolMapping.put(row[0], new Tool(row[0], types.get(row[1]), row[2]));
+            }
+        } catch (IOException | CsvException e) {
+            e.printStackTrace();
+        }
     }
 
     private Map<String, ToolType> createToolTypes() {
         Map<String, ToolType> types = new HashMap<>();
-        types.put("Ladder", new ToolType("Ladder", new BigDecimal("1.99"), true, true, false));
-        types.put("Chainsaw", new ToolType("Chainsaw", new BigDecimal("1.49"), true, false, true));
-        types.put("Jackhammer", new ToolType("JackHammer", new BigDecimal("2.99"), true, false, false));
+        try (InputStream inputStream = CheckoutService.class.getResourceAsStream(TOOLTYPE_CSV_FILE);
+             CSVReader reader = new CSVReader(new InputStreamReader(inputStream))) {
+
+            List<String[]> rows = reader.readAll();
+            for (String[] row : rows) {
+                types.put(row[0], new ToolType(row[0], new BigDecimal(row[1]), Boolean.valueOf(row[2]),
+                        Boolean.valueOf(row[3]), Boolean.valueOf(row[4])));
+            }
+        } catch (IOException | CsvException e) {
+            e.printStackTrace();
+        }
+
         return types;
     }
 }

@@ -13,7 +13,7 @@ public class CheckoutServiceTest {
     private static CheckoutService checkoutService;
 
     @BeforeAll
-    public static void setup(){
+    public static void setup() {
         checkoutService = new CheckoutService();
     }
 
@@ -24,23 +24,16 @@ public class CheckoutServiceTest {
                     LocalDate.of(2015, 9, 3), 5, 101);
             // This should throw an illegal argument exception
             Assertions.fail();
-        }
-        catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException e) {
             Assertions.assertEquals("The discount must be a value between 0 and 100. ", e.getMessage());
         }
     }
 
     @Test
     public void test2() {
-        try {
-            RentalAgreement agreement = checkoutService.checkout("LADW",
-                    LocalDate.of(2020, 7, 2), 3, 10);
-            System.out.println(agreement.prettyPrint());
-
-        }
-        catch (IllegalArgumentException e) {
-            Assertions.fail();
-        }
+        RentalAgreement agreement = checkoutService.checkout("LADW",
+                LocalDate.of(2020, 7, 2), 3, 10);
+        System.out.println(agreement.prettyPrint());
     }
 
     @Test
@@ -50,8 +43,7 @@ public class CheckoutServiceTest {
                     LocalDate.of(2015, 7, 2), 5, 25);
             System.out.println(agreement.prettyPrint());
 
-        }
-        catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException e) {
             Assertions.fail();
         }
     }
@@ -63,8 +55,7 @@ public class CheckoutServiceTest {
                     LocalDate.of(2015, 9, 3), 6, 0);
             System.out.println(agreement.prettyPrint());
 
-        }
-        catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException e) {
             Assertions.fail();
         }
     }
@@ -76,8 +67,7 @@ public class CheckoutServiceTest {
                     LocalDate.of(2015, 7, 2), 9, 0);
             System.out.println(agreement.prettyPrint());
 
-        }
-        catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException e) {
             Assertions.fail();
         }
     }
@@ -89,8 +79,7 @@ public class CheckoutServiceTest {
                     LocalDate.of(2020, 7, 2), 4, 50);
             System.out.println(agreement.prettyPrint());
 
-        }
-        catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException e) {
             Assertions.fail();
         }
     }
