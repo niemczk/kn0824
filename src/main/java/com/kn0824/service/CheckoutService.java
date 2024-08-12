@@ -15,7 +15,9 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.Month;
 import java.time.temporal.TemporalAdjusters;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class CheckoutService {
 
@@ -30,8 +32,7 @@ public class CheckoutService {
         initialize();
     }
 
-    public RentalAgreement checkout(String toolCode, LocalDate checkoutDate, int rentalDays,
-                                    int discount) throws IllegalArgumentException {
+    public RentalAgreement checkout(String toolCode, LocalDate checkoutDate, int rentalDays, int discount) throws IllegalArgumentException {
         StringBuilder errMessage = new StringBuilder();
         Tool toolBeingRequested = toolMapping.get(toolCode);
         if (rentalDays <= 0) {
@@ -47,14 +48,13 @@ public class CheckoutService {
             throw new IllegalArgumentException(errMessage.toString());
         }
 
-        LocalDate dueDate =  checkoutDate.plusDays(rentalDays);
+        LocalDate dueDate = checkoutDate.plusDays(rentalDays);
         int chargableDays = calculateChargeableDays(toolBeingRequested, checkoutDate, rentalDays);
         BigDecimal preDiscountCharge = toolBeingRequested.getToolType().getDailyCharge().multiply(new BigDecimal(chargableDays).setScale(2, RoundingMode.CEILING));
-        BigDecimal discountAmount = preDiscountCharge.multiply(new BigDecimal(discount/100.0)).setScale(2, RoundingMode.CEILING);
+        BigDecimal discountAmount = preDiscountCharge.multiply(new BigDecimal(discount / 100.0)).setScale(2, RoundingMode.CEILING);
         BigDecimal finalCharge = preDiscountCharge.subtract(discountAmount);
 
-        return new RentalAgreement(toolBeingRequested, rentalDays, checkoutDate, dueDate,
-                toolBeingRequested.getToolType().getDailyCharge(), chargableDays, preDiscountCharge, discount, discountAmount, finalCharge);
+        return new RentalAgreement(toolBeingRequested, rentalDays, checkoutDate, dueDate, toolBeingRequested.getToolType().getDailyCharge(), chargableDays, preDiscountCharge, discount, discountAmount, finalCharge);
     }
 
     /*
@@ -70,8 +70,10 @@ public class CheckoutService {
         boolean chargeOnWeekends = toolBeingRequested.getToolType().isWeekendCharge();
         boolean chargeOnWeekdays = toolBeingRequested.getToolType().isWeekdayCharge();
         for (LocalDate date = startingDate; !date.isAfter(endDate); date = date.plusDays(1)) {
-            if (chargeOnWeekdays && !isWeekend(date)) {
+            if (isWeekday(date) && chargeOnWeekdays) {
                 if (isHoliday(date) && !chargeOnHolidays) {
+                    continue;
+                } else if (isObservedHoliday(date) && !chargeOnHolidays) {
                     continue;
                 } else {
                     chargeableDays++;
@@ -82,32 +84,23 @@ public class CheckoutService {
                 chargeableDays++;
             }
 
-            if (isHoliday(date)) {
-                if (isHolidayObservedOnWeekday(date) && !chargeOnHolidays) {
-                    // In the case where we are a holiday that is on a weekend but we observe it on a weekday,
-                    // Just deduct the number of chargeable days if we don't charge on the holiday.
-                    chargeableDays--;
-                }
-            }
         }
         return chargeableDays;
     }
 
     private boolean isHoliday(LocalDate date) {
-        return date.equals(LocalDate.of(date.getYear(), Month.JULY, 4))
-                || isLaborDay(date);
+        return date.equals(LocalDate.of(date.getYear(), Month.JULY, 4)) || isLaborDay(date);
     }
 
-    private boolean isHolidayObservedOnWeekday(LocalDate date) {
-        // If the holiday falls on a weekend, it will be observed on the nearest weekday
-        return (date.getMonth() == Month.JULY && date.getDayOfMonth() == 4
-                && (date.getDayOfWeek() == DayOfWeek.SATURDAY || date.getDayOfWeek() == DayOfWeek.SUNDAY))
-                || (isLaborDay(date) && (date.getDayOfWeek() == DayOfWeek.SATURDAY || date.getDayOfWeek() == DayOfWeek.SUNDAY));
+    private boolean isObservedHoliday(LocalDate date) {
+        LocalDate july3rd = LocalDate.of(date.getYear(), Month.JULY, 3);
+        LocalDate july5th = LocalDate.of(date.getYear(), Month.JULY, 5);
+
+        return (date.equals(july3rd) && july3rd.getDayOfWeek() == DayOfWeek.FRIDAY) || (date.equals(july5th) && july5th.getDayOfWeek() == DayOfWeek.MONDAY);
     }
 
     private boolean isLaborDay(LocalDate date) {
-        return date.getMonth() == Month.SEPTEMBER && date.getDayOfWeek() == DayOfWeek.MONDAY
-                && date.with(TemporalAdjusters.firstInMonth(DayOfWeek.MONDAY)).getDayOfMonth() <= 7;
+        return date.getMonth() == Month.SEPTEMBER && date.getDayOfWeek() == DayOfWeek.MONDAY && date.with(TemporalAdjusters.firstInMonth(DayOfWeek.MONDAY)).getDayOfMonth() <= 7;
     }
 
     private boolean isWeekend(LocalDate date) {
@@ -115,12 +108,14 @@ public class CheckoutService {
         return dayOfWeek == DayOfWeek.SATURDAY || dayOfWeek == DayOfWeek.SUNDAY;
     }
 
+    private boolean isWeekday(LocalDate date) {
+        return !isWeekend(date);
+    }
+
     private void initialize() {
         Map<String, ToolType> types = createToolTypes();
         this.toolMapping = new HashMap<>();
-        try (InputStream inputStream = CheckoutService.class.getResourceAsStream(TOOLS_CSV_FILE);
-             CSVReader reader = new CSVReader(new InputStreamReader(inputStream))) {
-
+        try (InputStream inputStream = CheckoutService.class.getResourceAsStream(TOOLS_CSV_FILE); CSVReader reader = new CSVReader(new InputStreamReader(inputStream))) {
             List<String[]> rows = reader.readAll();
             for (String[] row : rows) {
                 toolMapping.put(row[0], new Tool(row[0], types.get(row[1]), row[2]));
@@ -132,13 +127,10 @@ public class CheckoutService {
 
     private Map<String, ToolType> createToolTypes() {
         Map<String, ToolType> types = new HashMap<>();
-        try (InputStream inputStream = CheckoutService.class.getResourceAsStream(TOOLTYPE_CSV_FILE);
-             CSVReader reader = new CSVReader(new InputStreamReader(inputStream))) {
-
+        try (InputStream inputStream = CheckoutService.class.getResourceAsStream(TOOLTYPE_CSV_FILE); CSVReader reader = new CSVReader(new InputStreamReader(inputStream))) {
             List<String[]> rows = reader.readAll();
             for (String[] row : rows) {
-                types.put(row[0], new ToolType(row[0], new BigDecimal(row[1]), Boolean.parseBoolean(row[2]),
-                        Boolean.parseBoolean(row[3]), Boolean.parseBoolean(row[4])));
+                types.put(row[0], new ToolType(row[0], new BigDecimal(row[1]), Boolean.parseBoolean(row[2]), Boolean.parseBoolean(row[3]), Boolean.parseBoolean(row[4])));
             }
         } catch (IOException | CsvException e) {
             e.printStackTrace();
