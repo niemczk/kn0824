@@ -70,20 +70,22 @@ public class CheckoutService {
         boolean chargeOnWeekends = toolBeingRequested.getToolType().isWeekendCharge();
         boolean chargeOnWeekdays = toolBeingRequested.getToolType().isWeekdayCharge();
         for (LocalDate date = startingDate; !date.isAfter(endDate); date = date.plusDays(1)) {
-            if (isWeekday(date) && chargeOnWeekdays) {
-                if (isHoliday(date) && !chargeOnHolidays) {
-                    continue;
-                } else if (isObservedHoliday(date) && !chargeOnHolidays) {
-                    continue;
-                } else {
-                    chargeableDays++;
-                }
-            }
+            boolean isWeekday = isWeekday(date);
+            boolean isHoliday = isHoliday(date);
+            boolean isObservedHoliday = isObservedHoliday(date);
+            boolean isWeekend = isWeekend(date);
 
-            if (isWeekend(date) && chargeOnWeekends) {
+            if (isWeekday) {
+                if (chargeOnWeekdays) {
+                    if (!isHoliday && !isObservedHoliday) {
+                        chargeableDays++;
+                    } else if (chargeOnHolidays && (isHoliday || isObservedHoliday)) {
+                        chargeableDays++;
+                    }
+                }
+            } else if (isWeekend && chargeOnWeekends) {
                 chargeableDays++;
             }
-
         }
         return chargeableDays;
     }
