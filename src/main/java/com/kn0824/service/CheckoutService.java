@@ -32,6 +32,15 @@ public class CheckoutService {
         initialize();
     }
 
+    /**
+     * Generates a Rental Agreement
+     * @param toolCode - Identifying Tool Code for the Tool to checkout
+     * @param checkoutDate - The checkout date for the tool. Please note that this date is not inclusive for charging, and charges will start on the following day.
+     * @param rentalDays - The number of days to rent the tool for
+     * @param discount - Discount Percentage (0-100)
+     * @return RentalAgreement for the given parameters
+     * @throws IllegalArgumentException If we are given an invalid tool code, a non-positive number of rental days, or a discount that doesn't fall within the proper range of 0-100
+     */
     public RentalAgreement checkout(String toolCode, LocalDate checkoutDate, int rentalDays, int discount) throws IllegalArgumentException {
         StringBuilder errMessage = new StringBuilder();
         Tool toolBeingRequested = toolMapping.get(toolCode);
@@ -49,12 +58,12 @@ public class CheckoutService {
         }
 
         LocalDate dueDate = checkoutDate.plusDays(rentalDays);
-        int chargableDays = calculateChargeableDays(toolBeingRequested, checkoutDate, rentalDays);
-        BigDecimal preDiscountCharge = toolBeingRequested.getToolType().getDailyCharge().multiply(new BigDecimal(chargableDays).setScale(2, RoundingMode.CEILING));
+        int chargeableDays = calculateChargeableDays(toolBeingRequested, checkoutDate, rentalDays);
+        BigDecimal preDiscountCharge = toolBeingRequested.getToolType().getDailyCharge().multiply(new BigDecimal(chargeableDays).setScale(2, RoundingMode.CEILING));
         BigDecimal discountAmount = preDiscountCharge.multiply(new BigDecimal(discount / 100.0)).setScale(2, RoundingMode.CEILING);
         BigDecimal finalCharge = preDiscountCharge.subtract(discountAmount);
 
-        return new RentalAgreement(toolBeingRequested, rentalDays, checkoutDate, dueDate, toolBeingRequested.getToolType().getDailyCharge(), chargableDays, preDiscountCharge, discount, discountAmount, finalCharge);
+        return new RentalAgreement(toolBeingRequested, rentalDays, checkoutDate, dueDate, toolBeingRequested.getToolType().getDailyCharge(), chargeableDays, preDiscountCharge, discount, discountAmount, finalCharge);
     }
 
     /*
