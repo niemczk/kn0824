@@ -34,7 +34,7 @@ public class CheckoutService {
 
     /**
      * Generates a Rental Agreement
-     * @param toolCode - Identifying Tool Code for the Tool to checkout
+     * @param toolCode - Identifying Tool Code for the Tool to check out
      * @param checkoutDate - The checkout date for the tool. Please note that this date is not inclusive for charging, and charges will start on the following day.
      * @param rentalDays - The number of days to rent the tool for
      * @param discount - Discount Percentage (0-100)
